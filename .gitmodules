@@ -1,0 +1,3 @@
+[submodule "d2itemreader"]
+	path = d2itemreader
+	url = https://github.com/squeek502/d2itemreader.git

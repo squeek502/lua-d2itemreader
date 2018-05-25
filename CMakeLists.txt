@@ -15,16 +15,18 @@ else()
   endif()
 endif()
 
-add_library(d2itemreader MODULE d2itemreader.c)
-set_target_properties( d2itemreader PROPERTIES PREFIX "" )
-target_link_libraries( d2itemreader "${PROJECT_SOURCE_DIR}/../d2itemreader/build/libd2itemreader.a" )
-target_include_directories( d2itemreader PRIVATE "../d2itemreader/src" )
-target_include_directories( d2itemreader PRIVATE ${LUA_INCLUDE_DIR} )
+add_subdirectory(d2itemreader EXCLUDE_FROM_ALL)
+
+add_library(lua_d2itemreader MODULE lua_d2itemreader.c)
+set_target_properties( lua_d2itemreader PROPERTIES OUTPUT_NAME "d2itemreader" PREFIX "" )
+target_link_libraries( lua_d2itemreader d2itemreader )
+target_include_directories( lua_d2itemreader PRIVATE "d2itemreader/src" )
+target_include_directories( lua_d2itemreader PRIVATE ${LUA_INCLUDE_DIR} )
 
 if(WIN32)
-  target_compile_definitions( d2itemreader PRIVATE _CRT_SECURE_NO_WARNINGS )
+  target_compile_definitions( lua_d2itemreader PRIVATE _CRT_SECURE_NO_WARNINGS )
   # Only link against the Lua library on Windows
-  target_link_libraries( d2itemreader ${LUA_LIBRARIES} )
+  target_link_libraries( lua_d2itemreader ${LUA_LIBRARIES} )
 endif()
 
 # Needed to avoid getting undefined references to liblua

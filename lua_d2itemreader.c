@@ -25,6 +25,8 @@
 #define set_boolean(L, k, v) set_field(boolean, L, k, v)
 #define set_value(L, k, v) set_field(value, L, k, v)
 
+static void push_d2item(lua_State *L, d2item* item);
+
 static int push_error(lua_State *L, const char* msg)
 {
 	lua_pushnil(L);
@@ -64,6 +66,16 @@ static void push_d2item_rarity_affixes(lua_State *L, uint16_t* affixes, uint8_t 
 	{
 		lua_pushinteger(L, affixes[i]);
 		lua_rawseti(L, -2, i+1);
+	}
+}
+
+static void push_d2item_itemlist(lua_State *L, d2itemlist* list)
+{
+	lua_createtable(L, (int)list->count, 0);
+	for (int i = 0; i < list->count; i++)
+	{
+		push_d2item(L, &list->items[i]);
+		lua_rawseti(L, -2, i + 1);
 	}
 }
 
@@ -120,25 +132,97 @@ static void push_d2item_set_rarity(lua_State *L, d2item* item)
 	}
 }
 
+static void push_d2itemproplist(lua_State *L, d2itemproplist* list)
+{
+	lua_createtable(L, (int)list->count, 0);
+	for (int i = 0; i < list->count; i++)
+	{
+		d2itemprop* prop = &list->properties[i];
+		lua_createtable(L, 0, 2);
+		set_integer(L, "id", prop->id);
+		lua_createtable(L, prop->numParams, 0);
+		for (int j = 0; j < prop->numParams; j++)
+		{
+			int param = prop->params[j];
+			lua_pushinteger(L, param);
+			lua_rawseti(L, -2, j + 1);
+		}
+		lua_setfield(L, -2, "params");
+		lua_rawseti(L, -2, i + 1);
+	}
+}
+
 static void push_d2item(lua_State *L, d2item* item)
 {
 	lua_newtable(L);
+
 	set_boolean(L, "identified", item->identified);
-	set_string(L, "code", item->code);
+	set_boolean(L, "socketed", item->socketed);
+	set_boolean(L, "isNew", item->isNew);
+	set_boolean(L, "isEar", item->isEar);
+	set_boolean(L, "starterItem", item->starterItem);
+	set_boolean(L, "simpleItem", item->simpleItem);
 	set_boolean(L, "ethereal", item->ethereal);
-	if (!item->simpleItem)
+	set_boolean(L, "personalized", item->personalized);
+	set_boolean(L, "isRuneword", item->isRuneword);
+
+	set_integer(L, "version", item->version);
+	set_integer(L, "locationID", item->locationID);
+	set_integer(L, "equippedID", item->equippedID);
+	set_integer(L, "positionX", item->positionX);
+	set_integer(L, "positionY", item->positionY);
+	set_integer(L, "panelID", item->panelID);
+
+	if (item->isEar)
 	{
-		if (item->id)
-		{
-			static char hexID[8+1];
-			snprintf(hexID, 8+1, "%08X", item->id);
-			set_string(L, "id", hexID);
-		}
-		set_integer(L, "level", item->level);
-		push_d2item_set_rarity(L, item);
+		lua_createtable(L, 0, 3);
+		set_integer(L, "classID", item->ear.classID);
+		set_integer(L, "level", item->ear.level);
+		set_string(L, "name", item->ear.name);
 	}
-	set_boolean(L, "runeword", item->isRuneword);
-	return;
+
+	set_string(L, "code", item->code);
+
+	push_d2item_itemlist(L, &item->socketedItems);
+	lua_setfield(L, -2, "socketedItems");
+
+	if (item->simpleItem)
+		return;
+
+	if (item->id)
+	{
+		static char hexID[8+1];
+		snprintf(hexID, 8+1, "%08X", item->id);
+		set_string(L, "id", hexID);
+	}
+	set_integer(L, "level", item->level);
+	push_d2item_set_rarity(L, item);
+	set_boolean(L, "multiplePictures", item->multiplePictures);
+	set_integer(L, "pictureID", item->pictureID);
+	set_boolean(L, "classSpecific", item->classSpecific);
+	set_integer(L, "automagicID", item->automagicID);
+	if (item->personalized)
+		set_string(L, "personalizedName", item->personalizedName);
+	set_boolean(L, "timestamp", item->timestamp);
+	set_integer(L, "defenseRating", item->defenseRating);
+	set_integer(L, "maxDurability", item->maxDurability);
+	set_integer(L, "currentDurability", item->currentDurability);
+	set_integer(L, "quantity", item->quantity);
+	set_integer(L, "numSockets", item->numSockets);
+
+	push_d2itemproplist(L, &item->magicProperties);
+	lua_setfield(L, -2, "magicProperties");
+
+	lua_createtable(L, item->numSetBonuses, 0);
+	for (int i = 0; i < item->numSetBonuses; i++)
+	{
+		push_d2itemproplist(L, &item->setBonuses[i]);
+		lua_rawseti(L, -2, i + 1);
+	}
+	lua_setfield(L, -2, "setBonuses");
+
+	push_d2itemproplist(L, &item->runewordProperties);
+	lua_setfield(L, -2, "runewordProperties");
 }
 
 static int ld2itemreader_getitems(lua_State *L)
@@ -148,6 +232,7 @@ static int ld2itemreader_getitems(lua_State *L)
 	static d2personalstash pstash;
 	static d2sharedstash sstash;
 	static d2atmastash astash;
+	static d2item d2i;
 	static size_t bytesRead;
 	static int key;
 
@@ -238,6 +323,16 @@ static int ld2itemreader_getitems(lua_State *L)
 			lua_rawseti(L, -2, i + 1);
 		}
 		d2atmastash_destroy(&astash);
+		break;
+	case D2FILETYPE_D2_ITEM:
+		err = d2item_parse_file(filepath, &d2i, &bytesRead);
+		if (err != D2ERR_OK)
+		{
+			goto err;
+		}
+		push_d2item(L, &d2i);
+		lua_rawseti(L, -2, 1);
+		d2item_destroy(&d2i);
 		break;
 	default:
 		return push_ferror(L, "unhandled filetype of %s: %d", filepath, type);

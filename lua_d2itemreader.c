@@ -235,11 +235,12 @@ static int ld2itemreader_getitems(lua_State *L)
 	static d2item d2i;
 	static size_t bytesRead;
 	static int key;
+	static char errorByteHexValue[32];
 
 	const char* filepath = luaL_checkstring(L, 1);
 	enum d2filetype type = d2filetype_of_file(filepath);
 	if (type == D2FILETYPE_UNKNOWN)
-		return push_ferror(L, "could not determine filetype of %s", filepath);
+		return push_ferror(L, "unknown filetype of %s", filepath);
 
 	lua_newtable(L);
 	switch(type)
@@ -335,13 +336,15 @@ static int ld2itemreader_getitems(lua_State *L)
 		d2item_destroy(&d2i);
 		break;
 	default:
-		return push_ferror(L, "unhandled filetype of %s: %d", filepath, type);
+		return push_ferror(L, "unhandled filetype (%d) of %s", filepath, type);
 		break;
 	}
 	return 1;
 
 err:
-	return push_ferror(L, "failed to parse %s: %s at byte 0x%X", filepath, d2err_str(err), bytesRead);
+	// Lua's fmt is very limited, so get the hex value as a string first
+	snprintf(errorByteHexValue, sizeof(errorByteHexValue), "%zx", bytesRead);
+	return push_ferror(L, "failed to parse %s: %s at byte 0x%s", filepath, d2err_str(err), errorByteHexValue);
 }
 
 static int ld2itemreader_loadfiles(lua_State *L)

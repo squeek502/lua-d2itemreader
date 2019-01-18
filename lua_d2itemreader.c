@@ -152,6 +152,16 @@ static void push_d2itemproplist(lua_State *L, d2itemproplist* list)
 	}
 }
 
+static void push_d2item_source(lua_State *L, const char* filepath, const char* section)
+{
+	lua_createtable(L, 0, 2);
+	set_string(L, "file", filepath);
+	if (section != NULL)
+	{
+		set_string(L, "section", section);
+	}
+}
+
 static void push_d2item(lua_State *L, d2item* item)
 {
 	lua_newtable(L);
@@ -284,18 +294,24 @@ static int ld2itemreader_getitems(lua_State *L)
 		{
 			d2item* item = &character.items.items[i];
 			push_d2item(L, item);
+			push_d2item_source(L, filepath, "character");
+			lua_setfield(L, -2, "source");
 			lua_rawseti(L, -2, i + 1);
 		}
 		for (int i = 0; i<character.itemsCorpse.count; i++)
 		{
 			d2item* item = &character.itemsCorpse.items[i];
 			push_d2item(L, item);
+			push_d2item_source(L, filepath, "corpse");
+			lua_setfield(L, -2, "source");
 			lua_rawseti(L, -2, i + 1);
 		}
 		for (int i = 0; i<character.itemsMerc.count; i++)
 		{
 			d2item* item = &character.itemsMerc.items[i];
 			push_d2item(L, item);
+			push_d2item_source(L, filepath, "merc");
+			lua_setfield(L, -2, "source");
 			lua_rawseti(L, -2, i + 1);
 		}
 		d2char_destroy(&character);
@@ -314,6 +330,9 @@ static int ld2itemreader_getitems(lua_State *L)
 			{
 				d2item* item = &page->items.items[j];
 				push_d2item(L, item);
+				push_d2item_source(L, filepath, NULL);
+				set_integer(L, "page", i + 1);
+				lua_setfield(L, -2, "source");
 				lua_rawseti(L, -2, key);
 				key++;
 			}
@@ -334,6 +353,9 @@ static int ld2itemreader_getitems(lua_State *L)
 			{
 				d2item* item = &page->items.items[j];
 				push_d2item(L, item);
+				push_d2item_source(L, filepath, NULL);
+				set_integer(L, "page", i + 1);
+				lua_setfield(L, -2, "source");
 				lua_rawseti(L, -2, key);
 				key++;
 			}
@@ -350,6 +372,8 @@ static int ld2itemreader_getitems(lua_State *L)
 		{
 			d2item* item = &astash.items.items[i];
 			push_d2item(L, item);
+			push_d2item_source(L, filepath, NULL);
+			lua_setfield(L, -2, "source");
 			lua_rawseti(L, -2, i + 1);
 		}
 		d2atmastash_destroy(&astash);
@@ -361,6 +385,8 @@ static int ld2itemreader_getitems(lua_State *L)
 			goto err;
 		}
 		push_d2item(L, &d2i);
+		push_d2item_source(L, filepath, NULL);
+		lua_setfield(L, -2, "source");
 		lua_rawseti(L, -2, 1);
 		d2item_destroy(&d2i);
 		break;

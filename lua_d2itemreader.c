@@ -225,6 +225,35 @@ static void push_d2item(lua_State *L, d2item* item)
 	lua_setfield(L, -2, "runewordProperties");
 }
 
+static int ld2itemreader_getfiletype(lua_State *L)
+{
+	const char* filepath = luaL_checkstring(L, 1);
+	enum d2filetype type = d2filetype_of_file(filepath);
+	switch (type)
+	{
+	case D2FILETYPE_D2_CHARACTER:
+		lua_pushstring(L, "character");
+		break;
+	case D2FILETYPE_D2_ITEM:
+		lua_pushstring(L, "item");
+		break;
+	case D2FILETYPE_ATMA_STASH:
+		lua_pushstring(L, "atma");
+		break;
+	case D2FILETYPE_PLUGY_PERSONAL_STASH:
+		lua_pushstring(L, "personal");
+		break;
+	case D2FILETYPE_PLUGY_SHARED_STASH:
+		lua_pushstring(L, "shared");
+		break;
+	case D2FILETYPE_UNKNOWN:
+		return push_ferror(L, "unknown filetype of %s", filepath);
+	default:
+		return push_ferror(L, "unhandled filetype (%d) of %s", type, filepath);
+	}
+	return 1;
+}
+
 static int ld2itemreader_getitems(lua_State *L)
 {
 	d2err err;
@@ -413,6 +442,7 @@ static const luaL_Reg d2itemreader_lualib[] = {
 	{ "loadfiles", ld2itemreader_loadfiles },
 	{ "loaddata", ld2itemreader_loaddata },
 	{ "getitems", ld2itemreader_getitems },
+	{ "getfiletype", ld2itemreader_getfiletype },
 	{ NULL, NULL }
 };
 

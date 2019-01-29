@@ -189,12 +189,15 @@ static void push_d2item(lua_State *L, d2item* item)
 		set_integer(L, "classID", item->ear.classID);
 		set_integer(L, "level", item->ear.level);
 		set_string(L, "name", item->ear.name);
+		lua_setfield(L, -2, "ear");
 	}
+	else
+	{
+		set_string(L, "code", item->code);
 
-	set_string(L, "code", item->code);
-
-	push_d2item_itemlist(L, &item->socketedItems);
-	lua_setfield(L, -2, "socketedItems");
+		push_d2item_itemlist(L, &item->socketedItems);
+		lua_setfield(L, -2, "socketedItems");
+	}
 
 	if (item->simpleItem)
 		return;

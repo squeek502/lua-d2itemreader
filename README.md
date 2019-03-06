@@ -8,10 +8,10 @@ Lua bindings to the [d2itemreader](https://github.com/squeek502/d2itemreader) li
 ## API Reference
 
 ### `d2itemreader.getfiletype(filepath)`
-Returns the type of the file at `filepath`, or `nil, err` if the filepath cannot be determined. If the filetype can be determined, it will be returned as one of the following strings: `"character"`, `"item"`, `"atma"`, `"personal"`, `"shared"`
+Returns the type of the file at `filepath`, or `nil, err` if the filetype cannot be determined. If the filetype can be determined, it will be returned as one of the following strings: `"character"`, `"item"`, `"atma"`, `"personal"`, `"shared"`
 
 ### `d2itemreader.getitems(filepath)`
-Returns an array-like table of items, or `nil, err` if there was an error reading the file. See [Item Format](#item-format).
+Returns an array-like table of items, or `nil, err` if there was an error reading the file. See [Item Format](#item-format) for the format of each item.
 
 ### `d2itemreader.loadfiles(filepaths)`
 Load custom Diablo II .txt data files from disk at the filepaths given. `filepaths` should be a table of the format:

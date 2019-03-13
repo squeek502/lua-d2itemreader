@@ -25,6 +25,8 @@
 #define set_boolean(L, k, v) set_field(boolean, L, k, v)
 #define set_value(L, k, v) set_field(value, L, k, v)
 
+static d2gamedata ld2itemreader_gamedata;
+
 static void push_d2item(lua_State *L, d2item* item);
 
 static int push_error(lua_State *L, const char* msg)
@@ -288,7 +290,7 @@ static int ld2itemreader_getitems(lua_State *L)
 	switch(type)
 	{
 	case D2FILETYPE_D2_CHARACTER:
-		err = d2char_parse_file(filepath, &character, &bytesRead);
+		err = d2char_parse_file(filepath, &character, &ld2itemreader_gamedata, &bytesRead);
 		if (err != D2ERR_OK)
 		{
 			goto err;
@@ -320,7 +322,7 @@ static int ld2itemreader_getitems(lua_State *L)
 		d2char_destroy(&character);
 		break;
 	case D2FILETYPE_PLUGY_PERSONAL_STASH:
-		err = d2personalstash_parse_file(filepath, &pstash, &bytesRead);
+		err = d2personalstash_parse_file(filepath, &pstash, &ld2itemreader_gamedata, &bytesRead);
 		if (err != D2ERR_OK)
 		{
 			goto err;
@@ -343,7 +345,7 @@ static int ld2itemreader_getitems(lua_State *L)
 		d2personalstash_destroy(&pstash);
 		break;
 	case D2FILETYPE_PLUGY_SHARED_STASH:
-		err = d2sharedstash_parse_file(filepath, &sstash, &bytesRead);
+		err = d2sharedstash_parse_file(filepath, &sstash, &ld2itemreader_gamedata, &bytesRead);
 		if (err != D2ERR_OK)
 		{
 			goto err;
@@ -366,7 +368,7 @@ static int ld2itemreader_getitems(lua_State *L)
 		d2sharedstash_destroy(&sstash);
 		break;
 	case D2FILETYPE_ATMA_STASH:
-		err = d2atmastash_parse_file(filepath, &astash, &bytesRead);
+		err = d2atmastash_parse_file(filepath, &astash, &ld2itemreader_gamedata, &bytesRead);
 		if (err != D2ERR_OK)
 		{
 			goto err;
@@ -382,7 +384,7 @@ static int ld2itemreader_getitems(lua_State *L)
 		d2atmastash_destroy(&astash);
 		break;
 	case D2FILETYPE_D2_ITEM:
-		err = d2item_parse_file(filepath, &d2i, &bytesRead);
+		err = d2item_parse_file(filepath, &d2i, &ld2itemreader_gamedata, &bytesRead);
 		if (err != D2ERR_OK)
 		{
 			goto err;
@@ -409,7 +411,7 @@ static int ld2itemreader_loadfiles(lua_State *L)
 {
 	luaL_checktype(L, 1, LUA_TTABLE);
 
-	d2datafiles files;
+	d2gamedatafiles files;
 
 	ld2itemreader_checkfield(L, 1, "armors", LUA_TSTRING);
 	files.armorTxtFilepath = lua_tostring(L, -1);
@@ -427,7 +429,9 @@ static int ld2itemreader_loadfiles(lua_State *L)
 	files.itemStatCostTxtFilepath = luaL_checkstring(L, -1);
 	lua_pop(L, 1);
 
-	d2err err = d2itemreader_init_files(files);
+	// make sure the previous data is destroyed
+	d2gamedata_destroy(&ld2itemreader_gamedata);
+	d2err err = d2gamedata_init_files(&ld2itemreader_gamedata, files);
 	if (err != D2ERR_OK)
 	{
 		return push_d2err(L, err);
@@ -440,7 +444,7 @@ static int ld2itemreader_loaddata(lua_State *L)
 {
 	luaL_checktype(L, 1, LUA_TTABLE);
 
-	d2databufs bufs;
+	d2gamedatabufs bufs;
 
 	ld2itemreader_checkfield(L, 1, "armors", LUA_TSTRING);
 	bufs.armorTxt = (char*)lua_tolstring(L, -1, &bufs.armorTxtSize);
@@ -458,7 +462,9 @@ static int ld2itemreader_loaddata(lua_State *L)
 	bufs.itemStatCostTxt = (char*)lua_tolstring(L, -1, &bufs.itemStatCostTxtSize);
 	lua_pop(L, 1);
 
-	d2err err = d2itemreader_init_bufs(bufs);
+	// make sure the previous data is destroyed
+	d2gamedata_destroy(&ld2itemreader_gamedata);
+	d2err err = d2gamedata_init_bufs(&ld2itemreader_gamedata, bufs);
 	if (err != D2ERR_OK)
 	{
 		return push_d2err(L, err);
@@ -477,7 +483,7 @@ static const luaL_Reg d2itemreader_lualib[] = {
 
 static int ld2itemreader_close(lua_State *L)
 {
-	d2itemreader_destroy();
+	d2gamedata_destroy(&ld2itemreader_gamedata);
 	return 0;
 }
 
@@ -489,7 +495,7 @@ static const luaL_Reg d2itemreader_gc[] = {
 
 EXPORT int luaopen_d2itemreader(lua_State *L)
 {
-	d2err err = d2itemreader_init_default();
+	d2err err = d2gamedata_init_default(&ld2itemreader_gamedata);
 	if (err != D2ERR_OK)
 	{
 		luaL_error(L, "failed to initialize d2itemreader: %s", d2err_str(err));

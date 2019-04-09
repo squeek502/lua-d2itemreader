@@ -112,14 +112,48 @@ Load custom Diablo II .txt data files from memory with the contents given. `data
   currentDurability = <number>,
   quantity = <number>,
   numSockets = <number>,
-  magicProperties = {...}, -- array-like table of magic properties, see below
-  setBonuses = {...}, -- array-like table of array-like tables of magic properties
-  runewordProperties = {...} -- array-like table of magic properties, see below
+  magicProperties = {...}, -- array-like table of magic properties (see 'Magic Property' below)
+  setBonuses = {...}, -- see 'Set Bonuses' below
+  runewordProperties = {...} -- array-like table of magic properties (see 'Magic Property' below)
 }
 
 -- Magic Property
 {
   id = <number>,
   params = {...} -- array-like table of parameter values (numbers)
+}
+
+-- Set Bonuses
+--
+-- A table with keys 1-5 where each key may have a nil value. This means that it is
+-- not guaranteed to be an array-like table (so ipairs and the # operator will not
+-- always work, use `for i=1,5 do` to iterate instead)
+--
+-- Note: These are the green per-item set bonuses, not the overall set bonuses
+{
+  -- Each non-nil value is an array-like table of magic properties (see 'Magic Property' above)
+  [1] = {...} or nil,
+  [2] = {...} or nil,
+  [3] = {...} or nil,
+  [4] = {...} or nil,
+  [5] = {...} or nil,
+  -- When the bonuses are active depends on the value of add_func in SetItems.txt
+  -- for the setID of the item:
+  --
+  -- If add_func=2, then it uses the number of items of the set that are worn:
+  --  - The property list at key 1 is active when >= 2 items of the set are worn.
+  --  - The property list at key 2 is active when >= 3 items of the set are worn.
+  --  - etc.
+  --
+  -- If add_func=1, then specific other items of the set need to be worn:
+  --  - If the item's setID is the first of the set:
+  --   + then the property list at key 1 is active when the second setID of the set is worn
+  --   + and the property list at key 2 is active when the third setID of the set is worn
+  --   + etc.
+  --  - If the item's setID is the second of the set:
+  --   + then the property list at key 1 is active when the first setID of the set is worn
+  --   + and the property list at key 2 is active when the third setID of the set is worn
+  --   + etc.
+  --  - etc.
 }
 ```

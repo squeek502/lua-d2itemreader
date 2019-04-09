@@ -228,11 +228,15 @@ static void push_d2item(lua_State *L, d2item* item)
 	push_d2itemproplist(L, &item->magicProperties);
 	lua_setfield(L, -2, "magicProperties");
 
-	lua_createtable(L, item->numSetBonuses, 0);
-	for (int i = 0; i < item->numSetBonuses; i++)
+	lua_createtable(L, D2_MAX_SET_PROPERTIES, 0);
+	for (int i = 0; i < D2_MAX_SET_PROPERTIES; i++)
 	{
-		push_d2itemproplist(L, &item->setBonuses[i]);
-		lua_rawseti(L, -2, i + 1);
+		unsigned short mask = 1 << i;
+		if (item->setBonusesBits & mask)
+		{
+			push_d2itemproplist(L, &item->setBonuses[i]);
+			lua_rawseti(L, -2, i + 1);
+		}
 	}
 	lua_setfield(L, -2, "setBonuses");
 

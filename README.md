@@ -13,6 +13,15 @@ Returns the type of the file at `filepath`, or `nil, err` if the filetype cannot
 ### `d2itemreader.getitems(filepath)`
 Returns an array-like table of items, or `nil, err` if there was an error reading the file. See [Item Format](#item-format) for the format of each item.
 
+### `d2itemreader.itemiterator(filepath)`
+Returns an iterator for all items in the file. Items in the file are parsed while iterating, and are returned in `item, source` pairs. See [Item Format](#item-format) for the format of each item. Example usage:
+
+```lua
+for item, source in d2itemreader.itemiterator('char.d2s') do
+  print(item.code .. ' in ' .. source.file)
+end
+```
+
 ### `d2itemreader.loadfiles(filepaths)`
 Load custom Diablo II .txt data files from disk at the filepaths given. `filepaths` should be a table of the format:
 

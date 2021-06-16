@@ -164,6 +164,26 @@ static void push_d2item_source(lua_State *L, const char* filepath, const char* s
 	}
 }
 
+static void push_d2item_source_stream(lua_State *L, const char* filepath, const d2itemreader_stream* stream)
+{
+	const char* section = NULL;
+	if (stream->filetype == D2FILETYPE_D2_CHARACTER)
+	{
+		switch(stream->curSection)
+		{
+			case D2CHAR_SECTION_MAIN: section = "character"; break;
+			case D2CHAR_SECTION_CORPSE: section = "corpse"; break;
+			case D2CHAR_SECTION_MERC: section = "merc"; break;
+		}
+	}
+	push_d2item_source(L, filepath, section);
+
+	if (stream->filetype == D2FILETYPE_PLUGY_PERSONAL_STASH || stream->filetype == D2FILETYPE_PLUGY_SHARED_STASH)
+	{
+		set_integer(L, "page", stream->curPage.pageNum);
+	}
+}
+
 static void push_d2item(lua_State *L, d2item* item)
 {
 	lua_newtable(L);
@@ -273,6 +293,51 @@ static int ld2itemreader_getfiletype(lua_State *L)
 	return 1;
 }
 
+static int ld2itemreader_itemiterator_it(lua_State *L)
+{
+	d2itemreader_stream* stream = (d2itemreader_stream*)lua_touserdata(L, lua_upvalueindex(2));
+	const char* filepath = luaL_checkstring(L, lua_upvalueindex(1));
+
+	d2item item;
+	bool status = d2itemreader_next(stream, &item);
+
+	if (status)
+	{
+		push_d2item(L, &item);
+		push_d2item_source_stream(L, filepath, stream);
+		d2item_destroy(&item);
+		return 2;
+	}
+	else
+	{
+		d2itemreader_close(stream);
+		if (stream->err != D2ERR_OK)
+		{
+			// Lua's fmt is very limited, so get the hex value as a string first
+			static char errorByteHexValue[32];
+			snprintf(errorByteHexValue, sizeof(errorByteHexValue), "%zx", d2itemreader_bytepos(stream));
+			luaL_error(L, "failed to parse %s: %s at byte 0x%s\n", filepath, d2err_str(stream->err), errorByteHexValue);
+		}
+		return 0;
+	}
+}
+
+static int ld2itemreader_itemiterator(lua_State *L)
+{
+	const char* filepath = luaL_checkstring(L, 1);
+	d2itemreader_stream* stream = (d2itemreader_stream*)lua_newuserdata(L, sizeof(d2itemreader_stream));
+	d2err err = d2itemreader_open_file(stream, filepath, &ld2itemreader_gamedata);
+	if (err != D2ERR_OK)
+	{
+		luaL_error(L, "failed to open file: %s", d2err_str(err));
+		return 0;
+	}
+
+	// upvalue 1 is the filepath, 2 is the d2itemreader_stream*
+	lua_pushcclosure(L, ld2itemreader_itemiterator_it, 2);
+	return 1;
+}
+
 static int ld2itemreader_getitems(lua_State *L)
 {
 	d2err err;
@@ -334,10 +399,10 @@ static int ld2itemreader_getitems(lua_State *L)
 		key=1;
 		for (uint32_t i=0; i<pstash.numPages; i++)
 		{
-			d2stashpage* page = &pstash.pages[i];
-			for (int j=0; j<page->items.count; j++)
+			d2itemlist* pageItems = &pstash.itemsByPage[i];
+			for (int j=0; j<pageItems->count; j++)
 			{
-				d2item* item = &page->items.items[j];
+				d2item* item = &pageItems->items[j];
 				push_d2item(L, item);
 				push_d2item_source(L, filepath, NULL);
 				set_integer(L, "page", i + 1);
@@ -357,10 +422,10 @@ static int ld2itemreader_getitems(lua_State *L)
 		key=1;
 		for (uint32_t i=0; i<sstash.numPages; i++)
 		{
-			d2stashpage* page = &sstash.pages[i];
-			for (int j=0; j<page->items.count; j++)
+			d2itemlist* pageItems = &sstash.itemsByPage[i];
+			for (int j=0; j<pageItems->count; j++)
 			{
-				d2item* item = &page->items.items[j];
+				d2item* item = &pageItems->items[j];
 				push_d2item(L, item);
 				push_d2item_source(L, filepath, NULL);
 				set_integer(L, "page", i + 1);
@@ -481,6 +546,7 @@ static const luaL_Reg d2itemreader_lualib[] = {
 	{ "loadfiles", ld2itemreader_loadfiles },
 	{ "loaddata", ld2itemreader_loaddata },
 	{ "getitems", ld2itemreader_getitems },
+	{ "itemiterator", ld2itemreader_itemiterator },
 	{ "getfiletype", ld2itemreader_getfiletype },
 	{ NULL, NULL }
 };
